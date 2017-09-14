@@ -11,10 +11,10 @@ import UIKit
 class ViewController: UIViewController {
     @IBOutlet var startButton: UIButton!
     @IBOutlet var resultsTextView: UITextView!
+    @IBOutlet var spinner: UIActivityIndicatorView!
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        // Do any additional setup after loading the view, typically from a nib.
     }
 
     override func didReceiveMemoryWarning() {
@@ -45,15 +45,36 @@ class ViewController: UIViewController {
     @IBAction func doWork(_ sender: AnyObject) {
         let startTime = NSDate()
         self.resultsTextView.text = ""
-        let fetchedData = fetchSomethingFromServer()
-        let processedData = processData(fetchedData)
-        let firstResult = calculateFirstResult(processedData)
-        let secondResult = calculateSecondResult(processedData)
-        let resultSummary = "First: [\(firstResult)]\nSecond: [\(secondResult)]"
-        
-        resultsTextView.text = resultSummary
-        let endTime = NSDate()
-        print("Comleted in \(endTime.timeIntervalSince(startTime as Date)) seconds")
+        startButton.isEnabled = false
+        spinner.startAnimating()
+        let queue = DispatchQueue.global(qos: .default)
+        queue.async {
+            let fetchedData = self.fetchSomethingFromServer()
+            let processedData = self.processData(fetchedData)
+            var firstResult: String!
+            var secondResult: String!
+            let group = DispatchGroup()
+            
+            
+            queue.async(group: group) {
+                firstResult = self.calculateFirstResult(processedData)
+            }
+            queue.async(group: group) {
+                secondResult = self.calculateSecondResult(processedData)
+            }
+            group.notify(queue: queue) {
+                let resultSummary = "First: [\(firstResult)]\nSecond: [\(secondResult)]"
+                
+                DispatchQueue.main.async {
+                    self.resultsTextView.text = resultSummary
+                    self.startButton.isEnabled = true
+                    self.spinner.stopAnimating()
+                }
+                
+                let endTime = NSDate()
+                print("Comleted in \(endTime.timeIntervalSince(startTime as Date)) seconds")
+            }
+        }
     }
 
 }
